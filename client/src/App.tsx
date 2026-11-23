@@ -1,4 +1,3 @@
-
 import {
   LayoutDashboard,
   Users,
@@ -13,12 +12,25 @@ import {
   ArrowDownRight,
   Wallet,
   ShieldCheck,
-  Download,
   Menu,
   X,
   MoreHorizontal,
-  CircleHelp,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 import {
   BrowserRouter,
@@ -31,7 +43,7 @@ import {
   Outlet,
 } from "react-router-dom";
 
-import { useState } from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -56,7 +68,7 @@ const managementItems = [
   { name: "Settings", path: "/dashboard/settings", icon: Settings },
 ];
 
-const invoices = [
+const recentInvoices = [
   {
     id: "INV-0024",
     customer: "Acme Corporation",
@@ -243,46 +255,80 @@ function DashboardLayout() {
   );
 }
 
+
 function Overview() {
+  const [period, setPeriod] = useState("7");
+  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
+
   const stats = [
     {
       title: "Total Revenue",
       value: "$48,290",
       change: "+12.8%",
       icon: Wallet,
-      positive: true,
+      path: "/dashboard/payments",
     },
     {
       title: "Active Subscriptions",
       value: "1,284",
       change: "+8.2%",
       icon: CreditCard,
-      positive: true,
+      path: "/dashboard/subscriptions",
     },
     {
       title: "Total Customers",
       value: "856",
       change: "+5.4%",
       icon: Users,
-      positive: true,
+      path: "/dashboard/customers",
     },
     {
       title: "Pending Invoices",
       value: "24",
       change: "-2.1%",
       icon: Receipt,
-      positive: false,
+      path: "/dashboard/invoices",
     },
   ];
+
+  const revenueData =
+    period === "7"
+      ? [
+          { label: "May", revenue: 4500 },
+          { label: "Jun", revenue: 6500 },
+          { label: "Jul", revenue: 5000 },
+          { label: "Aug", revenue: 8000 },
+          { label: "Sep", revenue: 6000 },
+          { label: "Oct", revenue: 9000 },
+          { label: "Nov", revenue: 7290 },
+        ]
+      : [
+          { label: "Week 1", revenue: 3500 },
+          { label: "Week 2", revenue: 6500 },
+          { label: "Week 3", revenue: 5000 },
+          { label: "Week 4", revenue: 9000 },
+        ];
+
+  const subscriptionData = [
+    { name: "Starter", active: 420 },
+    { name: "Professional", active: 580 },
+    { name: "Enterprise", active: 284 },
+  ];
+
+  const overdueData = [
+    { name: "Overdue", value: 12 },
+    { name: "Paid", value: 65 },
+    { name: "Pending", value: 23 },
+  ];
+
+  const pieColors = ["#EF4444", "#10B981", "#F59E0B"];
 
   return (
     <div className="p-5 md:p-9 max-w-[1500px] mx-auto">
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Dashboard
-          </h2>
+          <h2 className="text-2xl font-bold">Dashboard</h2>
           <p className="text-sm text-slate-500 mt-1">
             Track your business performance and revenue.
           </p>
@@ -297,120 +343,185 @@ function Overview() {
         </Link>
       </div>
 
+      {/* Dashboard Statistics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {stats.map((card) => {
           const Icon = card.icon;
+          const isNegative = card.change.startsWith("-");
+          const TrendIcon = isNegative ? ArrowDownRight : ArrowUpRight;
+          const trendColor = isNegative
+            ? "text-red-500"
+            : "text-emerald-600";
 
           return (
-            <div
+            <Link
+              to={card.path}
               key={card.title}
-              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
+              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-indigo-300 transition"
             >
               <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-500">
-                  {card.title}
-                </p>
-
+                <p className="text-sm text-slate-500">{card.title}</p>
                 <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                   <Icon size={20} />
                 </div>
               </div>
 
-              <h3 className="text-2xl font-bold mt-5">
-                {card.value}
-              </h3>
+              <h3 className="text-2xl font-bold mt-5">{card.value}</h3>
 
               <div className="flex items-center gap-1 mt-2 text-xs">
-                {card.positive ? (
-                  <ArrowUpRight size={15} className="text-emerald-600" />
-                ) : (
-                  <ArrowDownRight size={15} className="text-red-500" />
-                )}
-
-                <span className={card.positive ? "text-emerald-600 font-semibold" : "text-red-500 font-semibold"}>
+                <TrendIcon size={15} className={trendColor} />
+                <span className={`${trendColor} font-semibold`}>
                   {card.change}
                 </span>
-
-                <span className="text-slate-400">
-                  vs last month
-                </span>
+                <span className="text-slate-400">vs last month</span>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mt-7">
-
-        <div className="xl:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="font-bold text-lg">
-                Revenue Overview
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Monthly revenue performance
-              </p>
-            </div>
-
-            <select className="border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none">
-              <option>Last 7 months</option>
-              <option>Last 30 days</option>
-            </select>
+      {/* Revenue Area Chart */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mt-7">
+        <div className="flex flex-col sm:flex-row justify-between gap-3 mb-6">
+          <div>
+            <h3 className="font-bold text-lg">Monthly Revenue</h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Revenue performance overview
+            </p>
           </div>
 
-          <div className="flex items-end justify-between h-52 gap-3 mt-8 px-2">
-            {[45, 65, 50, 80, 60, 90, 72].map((height, i) => (
-              <div
-                key={i}
-                className="flex-1 h-full flex flex-col justify-end items-center gap-3"
-              >
-                <div
-                  className="w-full max-w-12 rounded-t-lg bg-indigo-500 hover:bg-indigo-700 transition"
-                  style={{ height: `${height}%` }}
-                />
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none"
+          >
+            <option value="7">Last 7 months</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
 
-                <span className="text-xs text-slate-400">
-                  {["May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"][i]}
-                </span>
-              </div>
-            ))}
+        <div className="h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={revenueData}>
+              <defs>
+                <linearGradient id="revenueColor" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" />
+              <YAxis />
+              <Tooltip formatter={(value) => [`$${value}`, "Revenue"]} />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#6366F1"
+                strokeWidth={3}
+                fill="url(#revenueColor)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Subscription and Overdue Charts */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mt-7">
+
+        {/* Active Subscriptions */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="font-bold text-lg">Active Subscriptions</h3>
+          <p className="text-xs text-slate-400 mt-1">
+            Plan-wise subscription distribution
+          </p>
+
+          <div className="h-72 mt-5">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={subscriptionData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar
+                  dataKey="active"
+                  name="Active Subscriptions"
+                  fill="#6366F1"
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-indigo-600 rounded-2xl p-6 text-white shadow-sm">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold">Security Status</h3>
-            <ShieldCheck size={23} />
-          </div>
+        {/* Overdue Invoices */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="font-bold text-lg">Invoice Overview</h3>
+          <p className="text-xs text-slate-400 mt-1">
+            Paid, pending and overdue invoice distribution
+          </p>
 
-          <div className="mt-9">
-            <p className="text-indigo-200 text-sm">
-              Workspace protection
-            </p>
-
-            <h2 className="text-3xl font-bold mt-2">
-              Preview
-            </h2>
-
-            <p className="text-xs text-indigo-200 mt-2">
-              Backend security verification pending.
-            </p>
-          </div>
-
-          <div className="mt-8 pt-5 border-t border-indigo-400/40 flex items-center justify-between text-sm">
-            <span>Tenant isolation</span>
-            <span className="font-semibold">UI Preview</span>
+          <div className="h-72 mt-5">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={overdueData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={95}
+                  label={({ name, percent }) =>
+                   `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                     }
+                >
+                  {overdueData.map((entry, index) => (
+                    <Cell
+                      key={entry.name}
+                      fill={pieColors[index]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
+      {/* Security Status */}
+      <Link
+        to="/dashboard/security"
+        className="bg-indigo-600 rounded-2xl p-6 text-white shadow-sm block hover:bg-indigo-700 transition mt-7"
+      >
+        <div className="flex justify-between items-center">
+          <h3 className="font-semibold">Security Status</h3>
+          <ShieldCheck size={23} />
+        </div>
+
+        <div className="mt-9">
+          <p className="text-indigo-200 text-sm">
+            Workspace protection
+          </p>
+          <h2 className="text-3xl font-bold mt-2">Preview</h2>
+          <p className="text-xs text-indigo-200 mt-2">
+            Backend security verification pending.
+          </p>
+        </div>
+
+        <div className="mt-8 pt-5 border-t border-indigo-400/40 flex justify-between text-sm">
+          <span>Tenant isolation</span>
+          <span className="font-semibold">UI Preview</span>
+        </div>
+      </Link>
+
+      {/* Recent Invoices */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mt-7">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="font-bold text-lg">
-              Recent Invoices
-            </h3>
+            <h3 className="font-bold text-lg">Recent Invoices</h3>
             <p className="text-xs text-slate-400 mt-1">
               Latest billing transactions
             </p>
@@ -428,106 +539,65 @@ function Overview() {
           <table className="w-full text-left min-w-[600px]">
             <thead>
               <tr className="text-xs text-slate-400 border-b border-slate-100">
-                <th className="pb-4 font-medium">Invoice</th>
-                <th className="pb-4 font-medium">Customer</th>
-                <th className="pb-4 font-medium">Date</th>
-                <th className="pb-4 font-medium">Amount</th>
-                <th className="pb-4 font-medium">Status</th>
-                <th className="pb-4 font-medium">Action</th>
+                <th className="pb-4">Invoice</th>
+                <th className="pb-4">Customer</th>
+                <th className="pb-4">Date</th>
+                <th className="pb-4">Amount</th>
+                <th className="pb-4">Status</th>
+                <th className="pb-4">Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {invoices.map((invoice) => (
-                <tr
-                  key={invoice.id}
-                  className="border-b border-slate-50 text-sm"
-                >
+              {recentInvoices.map((invoice) => (
+                <tr key={invoice.id} className="border-b border-slate-50 text-sm">
                   <td className="py-4 font-semibold text-indigo-600">
                     {invoice.id}
                   </td>
-
-                  <td className="py-4 font-medium">
-                    {invoice.customer}
-                  </td>
-
-                  <td className="py-4 text-slate-500">
-                    {invoice.date}
-                  </td>
-
-                  <td className="py-4 font-semibold">
-                    {invoice.amount}
-                  </td>
-
+                  <td className="py-4 font-medium">{invoice.customer}</td>
+                  <td className="py-4 text-slate-500">{invoice.date}</td>
+                  <td className="py-4 font-semibold">{invoice.amount}</td>
                   <td className="py-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        invoice.status === "Paid"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : invoice.status === "Pending"
-                          ? "bg-amber-50 text-amber-600"
-                          : "bg-red-50 text-red-600"
-                      }`}
-                    >
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      invoice.status === "Paid"
+                        ? "bg-emerald-50 text-emerald-600"
+                        : invoice.status === "Pending"
+                        ? "bg-amber-50 text-amber-600"
+                        : "bg-red-50 text-red-600"
+                    }`}>
                       {invoice.status}
                     </span>
                   </td>
-
                   <td className="py-4">
-                    <button className="text-slate-400 hover:text-indigo-600">
+                    <button
+                      onClick={() =>
+                        setSelectedInvoice(
+                          selectedInvoice === invoice.id ? null : invoice.id
+                        )
+                      }
+                      className="text-slate-400 hover:text-indigo-600"
+                      title="Invoice details"
+                    >
                       <MoreHorizontal size={19} />
                     </button>
+
+                    {selectedInvoice === invoice.id && (
+                      <button
+                        onClick={() =>
+                          window.alert(
+                            `Invoice: ${invoice.id}\nCustomer: ${invoice.customer}\nAmount: ${invoice.amount}\nStatus: ${invoice.status}`
+                          )
+                        }
+                        className="ml-2 text-indigo-600 text-xs font-semibold"
+                      >
+                        Details
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ManagementPage({ title, description }: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="p-5 md:p-9 max-w-[1500px] mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">
-            {title}
-          </h2>
-
-          <p className="text-sm text-slate-500 mt-2">
-            {description}
-          </p>
-        </div>
-
-        <button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-3 text-sm font-semibold flex items-center justify-center gap-2">
-          <Plus size={18} />
-          Add New
-        </button>
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-2xl p-8 md:p-12 shadow-sm">
-        <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-5">
-          <LayoutDashboard size={28} />
-        </div>
-
-        <h3 className="text-xl font-bold text-slate-800">
-          {title} Management
-        </h3>
-
-        <p className="text-sm text-slate-500 mt-3 max-w-lg leading-6">
-          This page is connected to the LedgerGuard dashboard navigation.
-          Its actual features and backend integration will be implemented next.
-        </p>
-
-        <div className="mt-7 p-4 rounded-xl bg-indigo-50 text-indigo-700 text-sm">
-          Page navigation is working successfully.
-          Feature implementation is pending.
         </div>
       </div>
     </div>
@@ -541,15 +611,26 @@ function Customers() {
     name: string;
     email: string;
     company: string;
-    status: string;
+    status: "Active" | "Inactive";
   };
 
-  const [customers, setCustomers] = useState<Customer[]>([
+  const STORAGE_KEY = "ledgerguard_customers";
+
+  const defaultCustomers: Customer[] = [
     { id: 1, name: "John Smith", email: "john@acme.com", company: "Acme Corporation", status: "Active" },
     { id: 2, name: "Sarah Wilson", email: "sarah@vertex.com", company: "Vertex Solutions", status: "Active" },
     { id: 3, name: "Michael Brown", email: "michael@nova.com", company: "Nova Technologies", status: "Active" },
     { id: 4, name: "Emily Davis", email: "emily@bright.com", company: "Bright Labs", status: "Inactive" },
-  ]);
+  ];
+
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) as Customer[] : defaultCustomers;
+    } catch {
+      return defaultCustomers;
+    }
+  });
 
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -559,6 +640,12 @@ function Customers() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
 
+  // Update state and browser storage together
+  const saveCustomers = (updatedCustomers: Customer[]) => {
+    setCustomers(updatedCustomers);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCustomers));
+  };
+
   const resetForm = () => {
     setName("");
     setEmail("");
@@ -567,28 +654,27 @@ function Customers() {
     setShowForm(false);
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (editingId !== null) {
-      setCustomers((previous) =>
-        previous.map((customer) =>
-          customer.id === editingId
-            ? { ...customer, name, email, company }
-            : customer
-        )
+      const updated = customers.map((customer) =>
+        customer.id === editingId
+          ? { ...customer, name, email, company }
+          : customer
       );
+
+      saveCustomers(updated);
     } else {
-      setCustomers((previous) => [
-        ...previous,
-        {
-          id: Date.now(),
-          name,
-          email,
-          company,
-          status: "Active",
-        },
-      ]);
+      const newCustomer: Customer = {
+        id: Date.now(),
+        name,
+        email,
+        company,
+        status: "Active",
+      };
+
+      saveCustomers([...customers, newCustomer]);
     }
 
     resetForm();
@@ -604,10 +690,22 @@ function Customers() {
 
   const handleDelete = (id: number) => {
     if (window.confirm("Are you sure you want to delete this customer?")) {
-      setCustomers((previous) =>
-        previous.filter((customer) => customer.id !== id)
-      );
+      saveCustomers(customers.filter((customer) => customer.id !== id));
     }
+  };
+
+  // Toggle customer status
+  const toggleStatus = (id: number) => {
+    const updated = customers.map((customer) =>
+      customer.id === id
+        ? {
+            ...customer,
+            status: customer.status === "Active" ? "Inactive" : "Active",
+          } as Customer
+        : customer
+    );
+
+    saveCustomers(updated);
   };
 
   const filteredCustomers = customers.filter((customer) =>
@@ -683,7 +781,7 @@ function Customers() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[650px]">
+          <table className="w-full text-left min-w-[750px]">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="pb-4">Customer</th>
@@ -721,6 +819,17 @@ function Customers() {
 
                   <td className="py-5">
                     <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => toggleStatus(customer.id)}
+                        className={`font-semibold hover:underline ${
+                          customer.status === "Active"
+                            ? "text-amber-600 hover:text-amber-800"
+                            : "text-emerald-600 hover:text-emerald-800"
+                        }`}
+                      >
+                        {customer.status === "Active" ? "Deactivate" : "Activate"}
+                      </button>
+
                       <button
                         onClick={() => handleEdit(customer)}
                         className="text-indigo-600 font-semibold hover:text-indigo-800"
@@ -760,7 +869,10 @@ function Customers() {
                 {editingId !== null ? "Edit Customer" : "Add New Customer"}
               </h3>
 
-              <button onClick={resetForm} className="text-slate-400 hover:text-red-500">
+              <button
+                onClick={resetForm}
+                className="text-slate-400 hover:text-red-500"
+              >
                 <X size={22} />
               </button>
             </div>
@@ -838,10 +950,12 @@ function Plans() {
     monthly: number;
     yearly: number;
     features: string;
-    status: string;
+    status: "Active" | "Inactive";
   };
 
-  const [plans, setPlans] = useState<Plan[]>([
+  const STORAGE_KEY = "ledgerguard_plans";
+
+  const defaultPlans: Plan[] = [
     {
       id: 1,
       name: "Starter",
@@ -866,7 +980,16 @@ function Plans() {
       features: "Unlimited members, Priority support",
       status: "Active",
     },
-  ]);
+  ];
+
+  const [plans, setPlans] = useState<Plan[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) as Plan[] : defaultPlans;
+    } catch {
+      return defaultPlans;
+    }
+  });
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -874,6 +997,12 @@ function Plans() {
   const [monthly, setMonthly] = useState("");
   const [yearly, setYearly] = useState("");
   const [features, setFeatures] = useState("");
+
+  // Save plans in state and localStorage
+  const savePlans = (updatedPlans: Plan[]) => {
+    setPlans(updatedPlans);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPlans));
+  };
 
   const resetForm = () => {
     setName("");
@@ -884,7 +1013,7 @@ function Plans() {
     setShowForm(false);
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const monthlyPrice = Number(monthly);
@@ -901,25 +1030,30 @@ function Plans() {
     }
 
     if (editingId !== null) {
-      setPlans((previous) =>
-        previous.map((plan) =>
-          plan.id === editingId
-            ? { ...plan, name, monthly: monthlyPrice, yearly: yearlyPrice, features }
-            : plan
-        )
+      const updated = plans.map((plan) =>
+        plan.id === editingId
+          ? {
+              ...plan,
+              name: name.trim(),
+              monthly: monthlyPrice,
+              yearly: yearlyPrice,
+              features,
+            }
+          : plan
       );
+
+      savePlans(updated);
     } else {
-      setPlans((previous) => [
-        ...previous,
-        {
-          id: Date.now(),
-          name,
-          monthly: monthlyPrice,
-          yearly: yearlyPrice,
-          features,
-          status: "Active",
-        },
-      ]);
+      const newPlan: Plan = {
+        id: Date.now(),
+        name: name.trim(),
+        monthly: monthlyPrice,
+        yearly: yearlyPrice,
+        features,
+        status: "Active",
+      };
+
+      savePlans([...plans, newPlan]);
     }
 
     resetForm();
@@ -936,21 +1070,22 @@ function Plans() {
 
   const handleDelete = (id: number) => {
     if (window.confirm("Are you sure you want to delete this plan?")) {
-      setPlans((previous) => previous.filter((plan) => plan.id !== id));
+      savePlans(plans.filter((plan) => plan.id !== id));
     }
   };
 
+  // Activate / Deactivate plan
   const toggleStatus = (id: number) => {
-    setPlans((previous) =>
-      previous.map((plan) =>
-        plan.id === id
-          ? {
-              ...plan,
-              status: plan.status === "Active" ? "Inactive" : "Active",
-            }
-          : plan
-      )
+    const updated = plans.map((plan) =>
+      plan.id === id
+        ? {
+            ...plan,
+            status: plan.status === "Active" ? "Inactive" as const : "Active" as const,
+          }
+        : plan
     );
+
+    savePlans(updated);
   };
 
   return (
@@ -1052,7 +1187,11 @@ function Plans() {
 
               <button
                 onClick={() => toggleStatus(plan.id)}
-                className="py-2 rounded-lg bg-amber-50 text-amber-700 text-sm font-semibold hover:bg-amber-100"
+                className={`py-2 rounded-lg text-sm font-semibold ${
+                  plan.status === "Active"
+                    ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                }`}
               >
                 {plan.status === "Active" ? "Disable" : "Enable"}
               </button>
@@ -1087,7 +1226,10 @@ function Plans() {
                 {editingId !== null ? "Edit Plan" : "Create New Plan"}
               </h3>
 
-              <button onClick={resetForm} className="text-slate-400 hover:text-red-500">
+              <button
+                onClick={resetForm}
+                className="text-slate-400 hover:text-red-500"
+              >
                 <X size={22} />
               </button>
             </div>
@@ -1188,113 +1330,134 @@ function Subscriptions() {
     plan: string;
     billing: string;
     amount: number;
-    status: string;
+    status: "Active" | "Cancelled";
     date: string;
   };
 
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([
+  const STORAGE_KEY = "ledgerguard_subscriptions";
+
+  const defaultSubscriptions: Subscription[] = [
     { id: 1, customer: "John Smith", plan: "Professional", billing: "Monthly", amount: 49, status: "Active", date: "Nov 01, 2026" },
     { id: 2, customer: "Sarah Wilson", plan: "Enterprise", billing: "Yearly", amount: 990, status: "Active", date: "Nov 02, 2026" },
     { id: 3, customer: "Michael Brown", plan: "Starter", billing: "Monthly", amount: 19, status: "Active", date: "Nov 03, 2026" },
     { id: 4, customer: "Emily Davis", plan: "Professional", billing: "Yearly", amount: 490, status: "Cancelled", date: "Nov 04, 2026" },
-  ]);
+  ];
+
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) as Subscription[] : defaultSubscriptions;
+    } catch {
+      return defaultSubscriptions;
+    }
+  });
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [customer, setCustomer] = useState("John Smith");
-  const [plan, setPlan] = useState("Professional");
+
+  const [customer, setCustomer] = useState("");
+  const [plan, setPlan] = useState("");
   const [billing, setBilling] = useState("Monthly");
+  const [amount, setAmount] = useState("");
   const [search, setSearch] = useState("");
 
-  const customers = [
-    "John Smith",
-    "Sarah Wilson",
-    "Michael Brown",
-    "Emily Davis",
-  ];
-
-  const planOptions = [
-    { name: "Starter", monthly: 19, yearly: 190 },
-    { name: "Professional", monthly: 49, yearly: 490 },
-    { name: "Enterprise", monthly: 99, yearly: 990 },
-  ];
-
-  const selectedPlan = planOptions.find((p) => p.name === plan);
-
-  const amount =
-    billing === "Monthly"
-      ? selectedPlan?.monthly ?? 0
-      : selectedPlan?.yearly ?? 0;
+  // Save subscriptions in state and localStorage
+  const saveSubscriptions = (updated: Subscription[]) => {
+    setSubscriptions(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  };
 
   const resetForm = () => {
-    setCustomer("John Smith");
-    setPlan("Professional");
+    setCustomer("");
+    setPlan("");
     setBilling("Monthly");
+    setAmount("");
     setEditingId(null);
     setShowForm(false);
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  // Add and Edit subscription
+  const handleSave = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const newSubscription = {
-  id: editingId ?? Date.now(),
-  customer,
-  plan,
-  billing,
-  amount,
-  status: "Active",
-  date:
-    editingId !== null
-      ? subscriptions.find((s) => s.id === editingId)?.date ?? "Nov 06, 2026"
-      : "Nov 06, 2026",
-};
+    const price = Number(amount);
+
+    if (
+      !customer.trim() ||
+      !plan.trim() ||
+      amount.trim() === "" ||
+      !Number.isFinite(price) ||
+      price < 0
+    ) {
+      return;
+    }
 
     if (editingId !== null) {
-      setSubscriptions((previous) =>
-        previous.map((s) =>
-          s.id === editingId
-            ? { ...newSubscription, status: s.status }
-            : s
-        )
+      const updated = subscriptions.map((s) =>
+        s.id === editingId
+          ? {
+              ...s,
+              customer: customer.trim(),
+              plan: plan.trim(),
+              billing,
+              amount: price,
+            }
+          : s
       );
+
+      saveSubscriptions(updated);
     } else {
-      setSubscriptions((previous) => [
-        newSubscription,
-        ...previous,
-      ]);
+      const newSubscription: Subscription = {
+        id: Date.now(),
+        customer: customer.trim(),
+        plan: plan.trim(),
+        billing,
+        amount: price,
+        status: "Active",
+        date: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        }),
+      };
+
+      saveSubscriptions([newSubscription, ...subscriptions]);
     }
 
     resetForm();
   };
 
-  const handleEdit = (subscription: Subscription) => {
-    setEditingId(subscription.id);
-    setCustomer(subscription.customer);
-    setPlan(subscription.plan);
-    setBilling(subscription.billing);
+  // Edit subscription
+  const handleEdit = (s: Subscription) => {
+    setEditingId(s.id);
+    setCustomer(s.customer);
+    setPlan(s.plan);
+    setBilling(s.billing);
+    setAmount(String(s.amount));
     setShowForm(true);
   };
 
+  // Delete subscription
   const handleDelete = (id: number) => {
-    if (window.confirm("Delete this subscription?")) {
-      setSubscriptions((previous) =>
-        previous.filter((s) => s.id !== id)
+    if (window.confirm("Are you sure you want to delete this subscription?")) {
+      saveSubscriptions(
+        subscriptions.filter((s) => s.id !== id)
       );
     }
   };
 
+  // Active / Cancelled toggle
   const toggleStatus = (id: number) => {
-    setSubscriptions((previous) =>
-      previous.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              status: s.status === "Active" ? "Cancelled" : "Active",
-            }
-          : s
-      )
+    const updated = subscriptions.map((s) =>
+      s.id === id
+        ? {
+            ...s,
+            status: s.status === "Active" ? "Cancelled" as const : "Active" as const,
+          }
+        : s
     );
+
+    saveSubscriptions(updated);
   };
 
   const filteredSubscriptions = subscriptions.filter((s) =>
@@ -1406,21 +1569,25 @@ function Subscriptions() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleEdit(s)}
-                        className="text-indigo-600 font-semibold"
+                        className="text-indigo-600 font-semibold hover:text-indigo-800"
                       >
                         Edit
                       </button>
 
                       <button
                         onClick={() => toggleStatus(s.id)}
-                        className="text-amber-600 font-semibold"
+                        className={`font-semibold ${
+                          s.status === "Active"
+                            ? "text-amber-600 hover:text-amber-800"
+                            : "text-emerald-600 hover:text-emerald-800"
+                        }`}
                       >
                         {s.status === "Active" ? "Cancel" : "Activate"}
                       </button>
 
                       <button
                         onClick={() => handleDelete(s.id)}
-                        className="text-red-500 font-semibold"
+                        className="text-red-500 font-semibold hover:text-red-700"
                       >
                         Delete
                       </button>
@@ -1442,16 +1609,20 @@ function Subscriptions() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 md:p-8 w-full max-w-lg shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 md:p-8 w-full max-w-lg shadow-2xl my-auto">
 
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">
                 {editingId !== null ? "Edit Subscription" : "Create Subscription"}
               </h3>
 
-              <button onClick={resetForm}>
-                <X size={22} className="text-slate-400" />
+              <button
+                type="button"
+                onClick={resetForm}
+                className="text-slate-400 hover:text-red-500"
+              >
+                <X size={22} />
               </button>
             </div>
 
@@ -1459,36 +1630,32 @@ function Subscriptions() {
 
               <div>
                 <label className="block text-sm font-semibold mb-2">
-                  Select Customer
+                  Customer Name
                 </label>
 
-                <select
+                <input
+                  required
+                  type="text"
                   value={customer}
                   onChange={(e) => setCustomer(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none"
-                >
-                  {customers.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  placeholder="Enter customer name"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold mb-2">
-                  Select Plan
+                  Plan Name
                 </label>
 
-                <select
+                <input
+                  required
+                  type="text"
                   value={plan}
                   onChange={(e) => setPlan(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none"
-                >
-                  {planOptions.map((p) => (
-                    <option key={p.name} value={p.name}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Enter your plan name"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500"
+                />
               </div>
 
               <div>
@@ -1499,17 +1666,36 @@ function Subscriptions() {
                 <select
                   value={billing}
                   onChange={(e) => setBilling(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500"
                 >
                   <option value="Monthly">Monthly</option>
                   <option value="Yearly">Yearly</option>
                 </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Subscription Amount ($)
+                </label>
+
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-indigo-500"
+                />
+              </div>
+
               <div className="bg-indigo-50 p-4 rounded-xl">
-                <p className="text-sm text-indigo-600">Subscription Amount</p>
+                <p className="text-sm text-indigo-600">
+                  Subscription Amount
+                </p>
                 <h3 className="text-2xl font-bold text-indigo-800 mt-1">
-                  ${amount}
+                  ${amount === "" ? "0" : amount}
                   <span className="text-sm font-normal">
                     /{billing === "Monthly" ? "month" : "year"}
                   </span>
@@ -1532,6 +1718,7 @@ function Subscriptions() {
                   {editingId !== null ? "Save Changes" : "Create"}
                 </button>
               </div>
+
             </form>
           </div>
         </div>
@@ -1539,6 +1726,25 @@ function Subscriptions() {
     </div>
   );
 }
+const toLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getDefaultInvoiceDates = () => {
+  const issue = new Date();
+  const due = new Date();
+
+  due.setDate(due.getDate() + 14);
+
+  return {
+    issueDate: toLocalDateString(issue),
+    dueDate: toLocalDateString(due),
+  };
+};
 
 function Invoices() {
   type Invoice = {
@@ -1552,8 +1758,18 @@ function Invoices() {
   };
 
   const customers = ["Acme Corporation", "Tech Solutions", "Global Services", "Digital Agency"];
+const [invoices, setInvoices] = useState<Invoice[]>(() => {
+  try {
+    const savedInvoices = localStorage.getItem("ledgerguard_invoices");
 
-  const [invoices, setInvoices] = useState<Invoice[]>([
+    if (savedInvoices) {
+      return JSON.parse(savedInvoices) as Invoice[];
+    }
+  } catch (error) {
+    console.error("Error loading invoices:", error);
+  }
+
+  return [
     {
       id: 1,
       invoiceNo: "INV-1001",
@@ -1572,7 +1788,15 @@ function Invoices() {
       dueDate: "2026-11-10",
       status: "Pending",
     },
-  ]);
+  ];
+});
+
+useEffect(() => {
+  localStorage.setItem(
+    "ledgerguard_invoices",
+    JSON.stringify(invoices)
+  );
+}, [invoices]);
 
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -1580,8 +1804,8 @@ function Invoices() {
 
   const [customer, setCustomer] = useState(customers[0]);
   const [amount, setAmount] = useState("");
-  const [issueDate, setIssueDate] = useState("2026-11-06");
-  const [dueDate, setDueDate] = useState("2026-11-15");
+  const [issueDate, setIssueDate] = useState(() => getDefaultInvoiceDates().issueDate);
+  const [dueDate, setDueDate] = useState(() => getDefaultInvoiceDates().dueDate);
   const [status, setStatus] = useState<"Paid" | "Pending">("Pending");
 
   const getInvoiceStatus = (invoice: Invoice) => {
@@ -1598,14 +1822,14 @@ function Invoices() {
   const resetForm = () => {
     setCustomer(customers[0]);
     setAmount("");
-    setIssueDate(new Date().toISOString().slice(0, 10));
-    setDueDate("2026-11-15");
+    setIssueDate(getDefaultInvoiceDates().issueDate);
+    setDueDate(getDefaultInvoiceDates().dueDate);
     setStatus("Pending");
     setEditingId(null);
     setShowForm(false);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!customer || Number(amount) <= 0 || !dueDate || !issueDate) {
@@ -1663,15 +1887,27 @@ function Invoices() {
     setShowForm(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this invoice?")) {
-      setInvoices((previous) => previous.filter((invoice) => invoice.id !== id));
-    }
-  };
+ const handleDelete = (id: number) => {
+  if (window.confirm("Are you sure you want to delete this invoice?")) {
+    setInvoices((previous) => previous.filter((invoice) => invoice.id !== id));
+  }
+};
 
-  const handlePrint = (invoice: Invoice) => {
-    const printWindow = window.open("", "_blank");
+const handleToggleStatus = (id: number) => {
+  setInvoices((previous) =>
+    previous.map((invoice) =>
+      invoice.id === id
+        ? {
+            ...invoice,
+            status: invoice.status === "Paid" ? "Pending" : "Paid",
+          }
+        : invoice
+    )
+  );
+};
 
+const handlePrint = (invoice: Invoice) => {
+  const printWindow = window.open("", "_blank");
     if (!printWindow) {
       alert("Please allow pop-ups to print the invoice.");
       return;
@@ -1749,7 +1985,7 @@ function Invoices() {
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div className="p-5 md:p-9 max-w-[1500px] mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Invoices</h1>
@@ -1763,8 +1999,8 @@ function Invoices() {
             setEditingId(null);
             setCustomer(customers[0]);
             setAmount("");
-            setIssueDate(new Date().toISOString().slice(0, 10));
-            setDueDate("2026-11-15");
+            setIssueDate(getDefaultInvoiceDates().issueDate);
+            setDueDate(getDefaultInvoiceDates().dueDate);
             setStatus("Pending");
             setShowForm(true);
           }}
@@ -1858,17 +2094,25 @@ function Invoices() {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => handleEdit(invoice)}
-                          className="font-medium text-indigo-600 hover:text-indigo-800"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handlePrint(invoice)}
-                          className="font-medium text-emerald-600 hover:text-emerald-800"
-                        >
-                          Print
-                        </button>
+  onClick={() => handleEdit(invoice)}
+  className="font-medium text-indigo-600 hover:text-indigo-800"
+>
+  Edit
+</button>
+
+<button
+  onClick={() => handleToggleStatus(invoice.id)}
+  className="font-medium text-amber-600 hover:text-amber-800"
+>
+  {invoice.status === "Paid" ? "Mark Pending" : "Mark Paid"}
+</button>
+
+<button
+  onClick={() => handlePrint(invoice)}
+  className="font-medium text-emerald-600 hover:text-emerald-800"
+>
+  Print
+</button>
                         <button
                           onClick={() => handleDelete(invoice.id)}
                           className="font-medium text-red-500 hover:text-red-700"
@@ -2005,32 +2249,1349 @@ function Invoices() {
   );
 }
 
+
 function Security() {
+  type LedgerEntry = {
+    id: number;
+    data: string;
+    createdAt: string;
+    prevHash: string;
+    hash: string;
+  };
+
+  const [entries, setEntries] = useState<LedgerEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem("ledgerguard_ledger");
+      if (!saved) return [];
+      const parsed: unknown = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed as LedgerEntry[] : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [description, setDescription] = useState("");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [verification, setVerification] = useState<
+    "Unknown" | "Verified" | "Tampered"
+  >("Unknown");
+
+  const saveEntries = (updated: LedgerEntry[]) => {
+    try {
+      localStorage.setItem(
+        "ledgerguard_ledger",
+        JSON.stringify(updated)
+      );
+      setEntries(updated);
+      setVerification("Unknown");
+    } catch {
+      setResult("Unable to save ledger data in browser storage.");
+    }
+  };
+
+  const generateHash = async (value: string) => {
+    if (!window.crypto?.subtle) {
+      throw new Error("Secure browser crypto is unavailable. Use HTTPS or localhost.");
+    }
+
+    const encoded = new TextEncoder().encode(value);
+    const buffer = await window.crypto.subtle.digest("SHA-256", encoded);
+
+    return Array.from(new Uint8Array(buffer))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  const handleAddEntry = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+
+    if (!description.trim()) {
+      setResult("Please enter a transaction description.");
+      return;
+    }
+
+    setLoading(true);
+    setResult("");
+
+    try {
+      const createdAt = new Date().toISOString();
+      const prevHash =
+        entries.length > 0
+          ? entries[entries.length - 1].hash
+          : "GENESIS";
+
+      const data = description.trim();
+      const hash = await generateHash(
+        `${data}|${createdAt}|${prevHash}`
+      );
+
+      const newEntry: LedgerEntry = {
+        id: Date.now(),
+        data,
+        createdAt,
+        prevHash,
+        hash,
+      };
+
+      try {
+        localStorage.setItem(
+          "ledgerguard_ledger",
+          JSON.stringify([...entries, newEntry])
+        );
+      } catch {
+        throw new Error("Unable to save ledger entry.");
+      }
+
+      setEntries((previous) => [...previous, newEntry]);
+      setDescription("");
+      setVerification("Unknown");
+      setResult("SUCCESS: Ledger entry added successfully.");
+    } catch (error) {
+      setResult(
+        error instanceof Error ? error.message : "Hash generation failed."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyLedger = async () => {
+    setLoading(true);
+    setResult("");
+
+    try {
+      if (entries.length === 0) {
+        setVerification("Unknown");
+        setResult("No ledger entries available to verify.");
+        return;
+      }
+
+      let previousHash = "GENESIS";
+
+      for (const entry of entries) {
+        if (entry.prevHash !== previousHash) {
+          setVerification("Tampered");
+          setResult(`FAILED: Chain broken at entry ${entry.id}`);
+          return;
+        }
+
+        const expectedHash = await generateHash(
+          `${entry.data}|${entry.createdAt}|${entry.prevHash}`
+        );
+
+        if (expectedHash !== entry.hash) {
+          setVerification("Tampered");
+          setResult(
+            `FAILED: Data tampering detected at entry ${entry.id}`
+          );
+          return;
+        }
+
+        previousHash = entry.hash;
+      }
+
+      setVerification("Verified");
+      setResult("SUCCESS: All ledger entries are valid. No tampering detected.");
+    } catch (error) {
+      setVerification("Unknown");
+      setResult(
+        error instanceof Error ? error.message : "Verification failed."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tamperDemo = () => {
+    if (entries.length === 0) {
+      setResult("Add at least one entry before testing tampering.");
+      return;
+    }
+
+    const updated = entries.map((entry, index) =>
+      index === 0
+        ? { ...entry, data: entry.data + " [MODIFIED]" }
+        : entry
+    );
+
+    saveEntries(updated);
+    setVerification("Tampered");
+    setResult("Demo: First entry modified. Click Verify Ledger to confirm.");
+  };
+
+  const resetDemo = () => {
+    if (window.confirm("Clear all demo ledger entries?")) {
+      saveEntries([]);
+      setResult("Demo ledger cleared.");
+      setVerification("Unknown");
+    }
+  };
+
+  const copyHash = async (hash: string) => {
+    try {
+      await navigator.clipboard.writeText(hash);
+      setResult("Hash copied to clipboard successfully.");
+    } catch {
+      setResult("Unable to copy hash. Please copy it manually.");
+    }
+  };
+
+  const filteredEntries = entries.filter((entry) => {
+    const matchesSearch = [
+      entry.id,
+      entry.data,
+      entry.prevHash,
+      entry.hash,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesFilter =
+      filter === "All" ||
+      (filter === "Verified" && verification === "Verified") ||
+      (filter === "Tampered" && verification === "Tampered");
+
+    return matchesSearch && matchesFilter;
+  });
+
+  const isFailed = result.startsWith("FAILED");
+
+  const statusColor =
+    verification === "Verified"
+      ? "text-emerald-600"
+      : verification === "Tampered"
+        ? "text-red-600"
+        : "text-amber-600";
+
   return (
-    <ManagementPage
-      title="Ledger & Security"
-      description="Monitor ledger records and workspace security."
-    />
+    <div className="p-5 md:p-9 max-w-[1500px] mx-auto">
+
+      {/* Header */}
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">
+            Ledger & Security
+          </h2>
+          <p className="text-slate-500 mt-2">
+            Monitor ledger records and verify data integrity.
+          </p>
+        </div>
+
+        <button
+          onClick={verifyLedger}
+          disabled={loading}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold disabled:opacity-50"
+        >
+          {loading ? "Checking..." : "✓ Verify Ledger"}
+        </button>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-7">
+
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <p className="text-slate-500">Total Entries</p>
+          <h3 className="text-3xl font-bold mt-2">
+            {entries.length}
+          </h3>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <p className="text-slate-500">Hash Algorithm</p>
+          <h3 className="text-2xl font-bold mt-2">SHA-256</h3>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <p className="text-slate-500">Chain Status</p>
+          <h3 className={`text-xl font-bold mt-2 ${statusColor}`}>
+            {verification}
+          </h3>
+        </div>
+
+      </div>
+
+      {/* Add Entry */}
+      <div className="bg-white rounded-2xl border p-6 mb-7 shadow-sm">
+        <h3 className="text-lg font-bold mb-5">
+          Add Ledger Entry
+        </h3>
+
+        <form
+          onSubmit={handleAddEntry}
+          className="flex flex-col md:flex-row gap-4"
+        >
+          <input
+            required
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Enter ledger transaction description..."
+            className="flex-1 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold disabled:opacity-50"
+          >
+            {loading ? "Adding..." : "+ Add Entry"}
+          </button>
+        </form>
+      </div>
+
+      {/* Result */}
+      {result && (
+        <div className={`p-4 rounded-xl mb-7 font-medium break-words ${
+          isFailed
+            ? "bg-red-50 text-red-700"
+            : result.startsWith("SUCCESS")
+              ? "bg-green-50 text-green-700"
+              : "bg-indigo-50 text-indigo-700"
+        }`}>
+          {result}
+        </div>
+      )}
+
+      {/* Ledger Table */}
+      <div className="bg-white rounded-2xl border p-5 md:p-6 shadow-sm">
+
+        <div className="flex flex-col lg:flex-row justify-between gap-4 mb-6">
+          <h3 className="text-lg font-bold">Ledger Entries</h3>
+
+          <div className="flex flex-wrap gap-3">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search ledger..."
+              className="border border-slate-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="border border-slate-200 rounded-xl px-4 py-2"
+            >
+              <option value="All">All Entries</option>
+              <option value="Verified">Verified</option>
+              <option value="Tampered">Tampered</option>
+            </select>
+
+            <button
+              onClick={tamperDemo}
+              disabled={entries.length === 0 || loading}
+              className="border border-red-300 text-red-600 px-4 py-2 rounded-xl font-semibold disabled:opacity-40"
+            >
+              Test Tampering
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[850px] text-left">
+            <thead>
+              <tr className="border-b text-slate-400 text-sm">
+                <th className="py-4">ID</th>
+                <th>Transaction Data</th>
+                <th>Previous Hash</th>
+                <th>Current Hash</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredEntries.map((entry) => (
+                <tr key={entry.id} className="border-b text-sm">
+                  <td className="py-5">{entry.id}</td>
+
+                  <td className="font-medium">
+                    {entry.data}
+                  </td>
+
+                  <td className="text-slate-500 font-mono text-xs">
+                    {entry.prevHash.slice(0, 12)}...
+                  </td>
+
+                  <td className="text-indigo-600 font-mono text-xs">
+                    {entry.hash.slice(0, 12)}...
+                  </td>
+
+                  <td className="text-slate-500">
+                    {new Date(entry.createdAt).toLocaleString()}
+                  </td>
+
+                  <td>
+                    <button
+                      onClick={() => copyHash(entry.hash)}
+                      className="text-indigo-600 hover:text-indigo-800 font-semibold"
+                    >
+                      Copy Hash
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {filteredEntries.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="text-center py-10 text-slate-400"
+                  >
+                    No matching ledger entries found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={resetDemo}
+            disabled={entries.length === 0 || loading}
+            className="text-red-600 hover:text-red-800 font-semibold px-4 py-2 disabled:opacity-40"
+          >
+            Reset Demo
+          </button>
+        </div>
+      </div>
+
+      {/* Information */}
+      <div className="mt-6 bg-indigo-50 p-5 rounded-xl">
+        <h3 className="font-bold text-indigo-800 mb-2">
+          How Ledger Verification Works
+        </h3>
+
+        <p className="text-sm text-indigo-700 leading-6">
+          Each entry contains its own SHA-256 hash and the previous
+          entry's hash. If stored data changes without recalculating
+          the chain, verification detects the mismatch.
+        </p>
+      </div>
+
+    </div>
   );
 }
+
+
 
 function Team() {
+  type Member = {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    status: "Active" | "Inactive";
+  };
+
+  const initialMembers: Member[] = [
+    {
+      id: 1,
+      name: "Abhishek Yadav",
+      email: "abhishek@example.com",
+      role: "Owner",
+      status: "Active",
+    },
+    {
+      id: 2,
+      name: "Rahul Sharma",
+      email: "rahul@example.com",
+      role: "Admin",
+      status: "Active",
+    },
+    {
+      id: 3,
+      name: "Priya Singh",
+      email: "priya@example.com",
+      role: "Billing",
+      status: "Active",
+    },
+  ];
+
+  const [members, setMembers] = useState<Member[]>(() => {
+    try {
+      const saved = localStorage.getItem("ledgerguard_team");
+
+      if (saved !== null) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed as Member[];
+      }
+
+      return initialMembers;
+    } catch {
+      return initialMembers;
+    }
+  });
+
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [message, setMessage] = useState("");
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("Billing");
+
+  const saveMembers = (updated: Member[]) => {
+    try {
+      localStorage.setItem(
+        "ledgerguard_team",
+        JSON.stringify(updated)
+      );
+      setMembers(updated);
+      return true;
+    } catch {
+      setMessage("Unable to save team data in browser storage.");
+      return false;
+    }
+  };
+
+  const resetForm = () => {
+    setName("");
+    setEmail("");
+    setRole("Billing");
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName || !cleanEmail) {
+      setMessage("Please fill in all required fields.");
+      return;
+    }
+
+    const duplicate = members.some(
+      (member) =>
+        member.email.toLowerCase() === cleanEmail &&
+        member.id !== editingId
+    );
+
+    if (duplicate) {
+      setMessage("This email address already exists.");
+      return;
+    }
+
+    let updated: Member[];
+
+    if (editingId !== null) {
+      updated = members.map((member) =>
+        member.id === editingId
+          ? {
+              ...member,
+              name: cleanName,
+              email: cleanEmail,
+              role,
+            }
+          : member
+      );
+    } else {
+      updated = [
+        ...members,
+        {
+          id: Date.now(),
+          name: cleanName,
+          email: cleanEmail,
+          role,
+          status: "Active",
+        },
+      ];
+    }
+
+    if (saveMembers(updated)) {
+      setMessage(
+        editingId !== null
+          ? "Team member updated successfully!"
+          : "Team member added successfully!"
+      );
+      resetForm();
+    }
+  };
+
+  const handleEdit = (member: Member) => {
+    setEditingId(member.id);
+    setName(member.name);
+    setEmail(member.email);
+    setRole(member.role);
+    setMessage("");
+    setShowForm(true);
+  };
+
+  const handleDelete = (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this member?")) {
+      return;
+    }
+
+    const updated = members.filter((member) => member.id !== id);
+
+    if (saveMembers(updated)) {
+      setMessage("Team member deleted successfully!");
+    }
+  };
+
+  const toggleStatus = (id: number) => {
+    const updated = members.map((member) =>
+      member.id === id
+        ? {
+            ...member,
+            status:
+              member.status === "Active" ? "Inactive" as const : "Active" as const,
+          }
+        : member
+    );
+
+    if (saveMembers(updated)) {
+      setMessage("Member status updated successfully!");
+    }
+  };
+
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch =
+      `${member.name} ${member.email} ${member.role}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+    const matchesRole =
+      roleFilter === "All" || member.role === roleFilter;
+
+    const matchesStatus =
+      statusFilter === "All" || member.status === statusFilter;
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  const activeCount = members.filter(
+    (member) => member.status === "Active"
+  ).length;
+
+  const inactiveCount = members.length - activeCount;
+
+  const exportCSV = () => {
+    const headers = ["Name", "Email", "Role", "Status"];
+
+    const rows = members.map((member) => [
+      member.name,
+      member.email,
+      member.role,
+      member.status,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "ledgerguard-team.csv";
+    link.click();
+
+    URL.revokeObjectURL(url);
+    setMessage("Team members exported successfully!");
+  };
+
   return (
-    <ManagementPage
-      title="Team Members"
-      description="Manage workspace members and their access."
-    />
+    <div className="p-5 md:p-9 max-w-[1500px] mx-auto">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">
+            Team Members
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage workspace members and their access.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={exportCSV}
+            className="border border-slate-200 bg-white px-4 py-3 rounded-xl font-semibold text-sm hover:bg-slate-50"
+          >
+            ↓ Export CSV
+          </button>
+
+          <button
+            onClick={() => {
+              resetForm();
+              setMessage("");
+              setShowForm(true);
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold"
+          >
+            + Add Member
+          </button>
+        </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-7">
+
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <p className="text-slate-500 text-sm">Total Members</p>
+          <h3 className="text-3xl font-bold mt-2">
+            {members.length}
+          </h3>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <p className="text-slate-500 text-sm">Active Members</p>
+          <h3 className="text-3xl font-bold mt-2 text-emerald-600">
+            {activeCount}
+          </h3>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <p className="text-slate-500 text-sm">Inactive Members</p>
+          <h3 className="text-3xl font-bold mt-2 text-red-500">
+            {inactiveCount}
+          </h3>
+        </div>
+
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div className="bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-xl p-4 mb-6 flex justify-between gap-3">
+          <span>{message}</span>
+          <button
+            onClick={() => setMessage("")}
+            className="font-bold"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Members Table */}
+      <div className="bg-white rounded-2xl border p-5 md:p-6 shadow-sm">
+
+        <div className="flex flex-col lg:flex-row justify-between gap-4 mb-6">
+          <h3 className="text-lg font-bold">All Team Members</h3>
+
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search members..."
+              className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="border border-slate-200 rounded-xl px-4 py-3"
+            >
+              <option value="All">All Roles</option>
+              <option value="Owner">Owner</option>
+              <option value="Admin">Admin</option>
+              <option value="Billing">Billing</option>
+              <option value="Viewer">Viewer</option>
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-slate-200 rounded-xl px-4 py-3"
+            >
+              <option value="All">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[750px]">
+            <thead>
+              <tr className="border-b text-sm text-slate-400">
+                <th className="py-4">Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredMembers.map((member) => (
+                <tr key={member.id} className="border-b text-sm">
+
+                  <td className="py-5 font-semibold text-slate-800">
+                    {member.name}
+                  </td>
+
+                  <td className="text-slate-600">
+                    {member.email}
+                  </td>
+
+                  <td>
+                    <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-semibold">
+                      {member.role}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button
+                      onClick={() => toggleStatus(member.id)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        member.status === "Active"
+                          ? "bg-emerald-50 text-emerald-600"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {member.status}
+                    </button>
+                  </td>
+
+                  <td>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleEdit(member)}
+                        className="text-indigo-600 font-semibold hover:underline"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(member.id)}
+                        className="text-red-500 font-semibold hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+
+                </tr>
+              ))}
+
+              {filteredMembers.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="py-10 text-center text-slate-400"
+                  >
+                    No members found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-sm text-slate-400 mt-5">
+          Showing {filteredMembers.length} of {members.length} members
+        </p>
+      </div>
+
+      {/* Add/Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
+
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">
+                {editingId !== null ? "Edit Member" : "Add New Member"}
+              </h3>
+
+              <button
+                onClick={resetForm}
+                className="text-slate-500 hover:text-red-500 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} className="space-y-4">
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Full Name
+                </label>
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter full name"
+                  className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Email Address
+                </label>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter email address"
+                  className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Member Role
+                </label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl p-3"
+                >
+                  <option value="Owner">Owner</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Billing">Billing</option>
+                  <option value="Viewer">Viewer</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="flex-1 border border-slate-200 rounded-xl py-3 font-semibold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3 font-semibold"
+                >
+                  {editingId !== null ? "Save Changes" : "Add Member"}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }
 
+
+
 function SettingsPage() {
+  type WorkspaceSettings = {
+    adminName: string;
+    companyName: string;
+    email: string;
+    currency: string;
+    taxId: string;
+  };
+
+  type NotificationSettings = {
+    invoiceAlerts: boolean;
+    paymentAlerts: boolean;
+    securityAlerts: boolean;
+    weeklyReports: boolean;
+  };
+
+  const defaultSettings: WorkspaceSettings = {
+    adminName: "Admin User",
+    companyName: "Acme Corporation",
+    email: "admin@acme.com",
+    currency: "INR",
+    taxId: "",
+  };
+
+  const defaultNotifications: NotificationSettings = {
+    invoiceAlerts: true,
+    paymentAlerts: true,
+    securityAlerts: true,
+    weeklyReports: false,
+  };
+
+  const [settings, setSettings] = useState<WorkspaceSettings>(() => {
+    try {
+      const saved = localStorage.getItem("ledgerguard_settings");
+      return saved
+        ? { ...defaultSettings, ...JSON.parse(saved) }
+        : defaultSettings;
+    } catch {
+      return defaultSettings;
+    }
+  });
+
+  const [notifications, setNotifications] =
+    useState<NotificationSettings>(() => {
+      try {
+        const saved = localStorage.getItem("ledgerguard_notifications");
+        return saved
+          ? { ...defaultNotifications, ...JSON.parse(saved) }
+          : defaultNotifications;
+      } catch {
+        return defaultNotifications;
+      }
+    });
+
+  const [message, setMessage] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    setSettings({
+      ...settings,
+      [e.target.name]: e.target.value,
+    });
+    setMessage("");
+  };
+
+  const handleNotificationChange = (
+    e: ChangeEvent<HTMLInputElement>
+  ) => {
+    setNotifications({
+      ...notifications,
+      [e.target.name]: e.target.checked,
+    });
+    setMessage("");
+  };
+
+  const handleSave = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    localStorage.setItem(
+      "ledgerguard_settings",
+      JSON.stringify(settings)
+    );
+
+    localStorage.setItem(
+      "ledgerguard_notifications",
+      JSON.stringify(notifications)
+    );
+
+    setMessage("Settings saved successfully!");
+  };
+
+  const handlePasswordChange = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPasswordMessage("");
+
+    if (newPassword.length < 8) {
+      setPasswordMessage("New password must contain at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("New password and confirm password do not match.");
+      return;
+    }
+
+    setPasswordMessage(
+      "Password details validated. Connect the backend password API to update your password securely."
+    );
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
+
   return (
-    <ManagementPage
-      title="Settings"
-      description="Manage your workspace preferences and settings."
-    />
+    <div className="p-5 md:p-9 max-w-5xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-slate-800">
+          Workspace Settings
+        </h2>
+        <p className="text-slate-500 mt-2">
+          Manage your profile, company information and preferences.
+        </p>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-7">
+        {/* Profile Information */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-slate-800">
+              Profile Information
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Manage your administrator profile.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Administrator Name
+              </label>
+              <input
+                required
+                name="adminName"
+                value={settings.adminName}
+                onChange={handleChange}
+                placeholder="Enter your name"
+                className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Email Address
+              </label>
+              <input
+                required
+                type="email"
+                name="email"
+                value={settings.email}
+                onChange={handleChange}
+                placeholder="Enter email address"
+                className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Company Information */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-slate-800">
+              Company Information
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Update your workspace and billing details.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Company Name
+              </label>
+              <input
+                required
+                name="companyName"
+                value={settings.companyName}
+                onChange={handleChange}
+                placeholder="Enter company name"
+                className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Billing Currency
+              </label>
+              <select
+                name="currency"
+                value={settings.currency}
+                onChange={handleChange}
+                className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="INR">INR - Indian Rupee</option>
+                <option value="USD">USD - US Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="GBP">GBP - British Pound</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Tax ID / GSTIN
+              </label>
+              <input
+                name="taxId"
+                value={settings.taxId}
+                onChange={handleChange}
+                placeholder="Enter Tax ID or GSTIN"
+                className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Notification Preferences */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm">
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-slate-800">
+              Notification Preferences
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Choose which updates you want to receive.
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            {[
+              {
+                name: "invoiceAlerts",
+                title: "Invoice Alerts",
+                description: "Get notified about new and overdue invoices.",
+              },
+              {
+                name: "paymentAlerts",
+                title: "Payment Notifications",
+                description: "Receive updates when payments are completed.",
+              },
+              {
+                name: "securityAlerts",
+                title: "Security Alerts",
+                description: "Get notified about important security activity.",
+              },
+              {
+                name: "weeklyReports",
+                title: "Weekly Reports",
+                description: "Receive a weekly workspace activity summary.",
+              },
+            ].map((item) => (
+              <label
+                key={item.name}
+                className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4 last:border-0 last:pb-0 cursor-pointer"
+              >
+                <div>
+                  <p className="font-semibold text-slate-700">
+                    {item.title}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {item.description}
+                  </p>
+                </div>
+
+                <input
+                  type="checkbox"
+                  name={item.name}
+                  checked={
+                    notifications[
+                      item.name as keyof NotificationSettings
+                    ]
+                  }
+                  onChange={handleNotificationChange}
+                  className="h-5 w-5 accent-indigo-600 cursor-pointer"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Save Settings */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          {message && (
+            <div className="mb-5 bg-green-50 border border-green-200 text-green-700 p-4 rounded-xl text-sm font-medium">
+              {message}
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-7 py-3 rounded-xl font-semibold transition"
+            >
+              Save Settings
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* Change Password */}
+      <form
+        onSubmit={handlePasswordChange}
+        className="mt-7 bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-sm"
+      >
+        <div className="mb-6">
+          <h3 className="text-lg font-bold text-slate-800">
+            Change Password
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Update your account password.
+          </p>
+        </div>
+
+        <div className="space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Current Password
+            </label>
+            <input
+              required
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                New Password
+              </label>
+              <input
+                required
+                type="password"
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 8 characters"
+                className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Confirm New Password
+              </label>
+              <input
+                required
+                type="password"
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="w-full border border-slate-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {passwordMessage && (
+          <div className="mt-5 bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm">
+            {passwordMessage}
+          </div>
+        )}
+
+        <div className="mt-7 flex justify-end">
+          <button
+            type="submit"
+            className="bg-slate-800 hover:bg-slate-900 text-white px-7 py-3 rounded-xl font-semibold transition"
+          >
+            Validate Password Change
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
+
 function ModalTest() {
   const [isOpen, setIsOpen] = useState(false);
 

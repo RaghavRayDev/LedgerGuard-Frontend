@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Wallet,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   X,
   Download,
   RotateCcw,
+  Pencil,
 } from "lucide-react";
 
 type Payment = {
@@ -70,28 +71,73 @@ const formatAmount = (amount: number) =>
   `₹${amount.toLocaleString("en-IN")}`;
 
 function Payments() {
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  // Load payments from LocalStorage
+  const [payments, setPayments] = useState<Payment[]>(() => {
+    try {
+      const savedPayments = localStorage.getItem("ledgerguard_payments");
+
+      if (savedPayments !== null) {
+        const parsedPayments: unknown = JSON.parse(savedPayments);
+
+        if (Array.isArray(parsedPayments)) {
+          return parsedPayments as Payment[];
+        }
+      }
+
+      return initialPayments;
+    } catch (error) {
+      console.error("Failed to load payments:", error);
+      return initialPayments;
+    }
+  });
+
+  // Automatically save payments
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "ledgerguard_payments",
+        JSON.stringify(payments)
+      );
+    } catch (error) {
+      console.error("Failed to save payments:", error);
+      alert("Unable to save payment data in browser storage.");
+    }
+  }, [payments]);
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [customer, setCustomer] = useState("");
   const [invoice, setInvoice] = useState("");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("UPI");
-  const [status, setStatus] = useState<
-    Payment["status"]
-  >("Successful");
+  const [status, setStatus] = useState<Payment["status"]>("Successful");
 
+  // Reset form
   const resetForm = () => {
     setCustomer("");
     setInvoice("");
     setAmount("");
     setMethod("UPI");
     setStatus("Successful");
+    setEditingId(null);
     setShowForm(false);
   };
 
+  // Open edit form
+  const handleEditPayment = (payment: Payment) => {
+    setEditingId(payment.id);
+    setCustomer(payment.customer);
+    setInvoice(payment.invoice);
+    setAmount(String(payment.amount));
+    setMethod(payment.method);
+    setStatus(payment.status);
+    setShowForm(true);
+  };
+
+  // Add or Update Payment
   const handleAddPayment = (
     e: React.FormEvent<HTMLFormElement>
   ) => {
@@ -99,26 +145,54 @@ function Payments() {
 
     const paymentAmount = Number(amount);
 
-    if (!customer.trim() || !invoice.trim() || paymentAmount <= 0) {
+    if (
+      !customer.trim() ||
+      !invoice.trim() ||
+      !Number.isFinite(paymentAmount) ||
+      paymentAmount <= 0
+    ) {
       alert("Please enter valid payment details.");
       return;
     }
 
-    const newPayment: Payment = {
-      id: Date.now(),
-      transactionId: `TXN-${Date.now().toString().slice(-6)}`,
-      customer,
-      invoice,
-      amount: paymentAmount,
-      method,
-      date: new Date().toISOString().slice(0, 10),
-      status,
-    };
+    if (editingId !== null) {
+      setPayments((previous) =>
+        previous.map((payment) =>
+          payment.id === editingId
+            ? {
+                ...payment,
+                customer: customer.trim(),
+                invoice: invoice.trim(),
+                amount: paymentAmount,
+                method,
+                status,
+              }
+            : payment
+        )
+      );
 
-    setPayments((previous) => [newPayment, ...previous]);
+      alert("Payment updated successfully!");
+    } else {
+      const newPayment: Payment = {
+        id: Date.now(),
+        transactionId: `TXN-${Date.now().toString().slice(-6)}`,
+        customer: customer.trim(),
+        invoice: invoice.trim(),
+        amount: paymentAmount,
+        method,
+        date: new Date().toISOString().slice(0, 10),
+        status,
+      };
+
+      setPayments((previous) => [newPayment, ...previous]);
+
+      alert("Payment added successfully!");
+    }
+
     resetForm();
   };
 
+  // Update payment status
   const updateStatus = (
     id: number,
     newStatus: Payment["status"]
@@ -132,6 +206,7 @@ function Payments() {
     );
   };
 
+  // Delete payment
   const deletePayment = (id: number) => {
     if (window.confirm("Delete this payment record?")) {
       setPayments((previous) =>
@@ -140,6 +215,7 @@ function Payments() {
     }
   };
 
+  // Search and filter
   const filteredPayments = payments.filter((payment) => {
     const matchesSearch = [
       payment.transactionId,
@@ -201,6 +277,7 @@ function Payments() {
     },
   ];
 
+  // Export CSV
   const exportCSV = () => {
     const headers = [
       "Transaction ID",
@@ -244,6 +321,7 @@ function Payments() {
     URL.revokeObjectURL(url);
   };
 
+  // Status styling
   const statusStyle = (value: Payment["status"]) => {
     switch (value) {
       case "Successful":
@@ -260,6 +338,7 @@ function Payments() {
   return (
     <div className="p-5 md:p-9 max-w-[1500px] mx-auto">
 
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -280,7 +359,10 @@ function Payments() {
           </button>
 
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              resetForm();
+              setShowForm(true);
+            }}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold text-sm flex items-center gap-2"
           >
             <Plus size={18} />
@@ -289,6 +371,7 @@ function Payments() {
         </div>
       </div>
 
+      {/* Statistics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-7">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -315,6 +398,7 @@ function Payments() {
         })}
       </div>
 
+      {/* Successful Amount */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-7 shadow-sm">
         <p className="text-sm text-slate-500">
           Successful Payment Amount
@@ -329,6 +413,7 @@ function Payments() {
         </p>
       </div>
 
+      {/* Transaction History */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm">
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
@@ -370,7 +455,7 @@ function Payments() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left">
+          <table className="w-full min-w-[1000px] text-left">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
                 <th className="pb-4">Transaction ID</th>
@@ -422,6 +507,17 @@ function Payments() {
 
                   <td className="py-5">
                     <div className="flex items-center gap-3">
+
+                      {/* Edit */}
+                      <button
+                        onClick={() => handleEditPayment(payment)}
+                        title="Edit payment"
+                        className="text-indigo-600 hover:text-indigo-800"
+                      >
+                        <Pencil size={17} />
+                      </button>
+
+                      {/* Refund */}
                       {payment.status === "Successful" && (
                         <button
                           onClick={() => updateStatus(payment.id, "Refunded")}
@@ -432,6 +528,7 @@ function Payments() {
                         </button>
                       )}
 
+                      {/* Approve */}
                       {payment.status === "Pending" && (
                         <button
                           onClick={() => updateStatus(payment.id, "Successful")}
@@ -441,12 +538,14 @@ function Payments() {
                         </button>
                       )}
 
+                      {/* Delete */}
                       <button
                         onClick={() => deletePayment(payment.id)}
                         className="text-red-500 font-semibold hover:text-red-700"
                       >
                         Delete
                       </button>
+
                     </div>
                   </td>
                 </tr>
@@ -467,13 +566,14 @@ function Payments() {
         </div>
       </div>
 
+      {/* Add / Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-slate-950/50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl p-6 md:p-8 w-full max-w-lg shadow-2xl my-8">
 
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">
-                Add New Payment
+                {editingId !== null ? "Edit Payment" : "Add New Payment"}
               </h2>
 
               <button
@@ -558,6 +658,7 @@ function Payments() {
                   <option value="Successful">Successful</option>
                   <option value="Pending">Pending</option>
                   <option value="Failed">Failed</option>
+                  <option value="Refunded">Refunded</option>
                 </select>
               </div>
 
@@ -565,7 +666,7 @@ function Payments() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="flex-1 border border-slate-200 rounded-xl py-3 font-semibold text-slate-600"
+                  className="flex-1 border border-slate-200 rounded-xl py-3 font-semibold text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
@@ -574,13 +675,14 @@ function Payments() {
                   type="submit"
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3 font-semibold"
                 >
-                  Save Payment
+                  {editingId !== null ? "Update Payment" : "Save Payment"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }
