@@ -1,3 +1,4 @@
+
 import {
   LayoutDashboard,
   Users,
@@ -12,10 +13,13 @@ import {
   ArrowDownRight,
   Wallet,
   ShieldCheck,
+  KeyRound,
   Menu,
   X,
   MoreHorizontal,
+  LogOut,
 } from "lucide-react";
+
 import {
   ResponsiveContainer,
   AreaChart,
@@ -48,6 +52,7 @@ import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Payments from "./pages/Payments";
+import ApiKeys from "./pages/ApiKeys";
 import Modal from "./components/Modal";
 import Toast from "./components/Toast";
 import Loading from "./components/Loading";
@@ -61,53 +66,40 @@ const navItems = [
   { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
   { name: "Payments", path: "/dashboard/payments", icon: Wallet },
 ];
-
 const managementItems = [
   { name: "Ledger & Security", path: "/dashboard/security", icon: ShieldCheck },
   { name: "Team Members", path: "/dashboard/team", icon: Users },
+  { name: "API Keys", path: "/dashboard/api-keys", icon: KeyRound },
   { name: "Settings", path: "/dashboard/settings", icon: Settings },
 ];
 
-const recentInvoices = [
-  {
-    id: "INV-0024",
-    customer: "Acme Corporation",
-    date: "Nov 06, 2026",
-    amount: "$2,450.00",
-    status: "Paid",
-  },
-  {
-    id: "INV-0023",
-    customer: "Vertex Solutions",
-    date: "Nov 05, 2026",
-    amount: "$1,280.00",
-    status: "Pending",
-  },
-  {
-    id: "INV-0022",
-    customer: "Nova Technologies",
-    date: "Nov 04, 2026",
-    amount: "$3,600.00",
-    status: "Paid",
-  },
-  {
-    id: "INV-0021",
-    customer: "Bright Labs",
-    date: "Nov 03, 2026",
-    amount: "$890.00",
-    status: "Overdue",
-  },
-];
 
 function DashboardLayout() {
   const location = useLocation();
+
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [notificationsRead, setNotificationsRead] = useState(false);
 
   const currentItem = [...navItems, ...managementItems].find(
     (item) => item.path === location.pathname
   );
 
   const currentPage = currentItem?.name || "Overview";
+
+  const searchableItems = [...navItems, ...managementItems];
+
+  const filteredItems = searchableItems.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleLogout = () => {
+    localStorage.removeItem("ledgerguard_token");
+    window.location.href = "/login";
+  };
 
   const renderNavigation = (items: typeof navItems) =>
     items.map((item) => {
@@ -136,6 +128,8 @@ function DashboardLayout() {
   return (
     <div className="min-h-screen bg-[#f7f8fc] text-slate-800 md:flex">
 
+      {/* SIDEBAR */}
+
       <aside className="hidden md:flex w-64 min-h-screen bg-white border-r border-slate-200 flex-col fixed left-0 top-0 z-20">
 
         <div className="px-7 py-7 flex items-center gap-3">
@@ -154,6 +148,7 @@ function DashboardLayout() {
         </div>
 
         <div className="px-5 mt-5">
+
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">
             Workspace
           </p>
@@ -165,10 +160,13 @@ function DashboardLayout() {
           </p>
 
           {renderNavigation(managementItems)}
+
         </div>
 
         <div className="mt-auto p-5">
+
           <div className="bg-indigo-50 rounded-2xl p-4">
+
             <div className="flex items-center gap-2 text-indigo-700 font-semibold text-sm">
               <ShieldCheck size={17} />
               Secure Workspace
@@ -177,9 +175,11 @@ function DashboardLayout() {
             <p className="text-xs text-slate-500 mt-2 leading-5">
               Tenant isolation implementation and verification pending.
             </p>
+
           </div>
 
           <div className="flex items-center gap-3 mt-6 pt-5 border-t border-slate-100">
+
             <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
               AC
             </div>
@@ -190,15 +190,22 @@ function DashboardLayout() {
                 admin@acme.com
               </p>
             </div>
+
           </div>
         </div>
+
       </aside>
+
+      {/* MAIN CONTENT */}
 
       <main className="flex-1 md:ml-64 min-w-0">
 
-        <header className="h-20 bg-white border-b border-slate-200 px-5 md:px-9 flex items-center justify-between sticky top-0 z-10">
+        {/* HEADER */}
+
+        <header className="h-20 bg-white border-b border-slate-200 px-5 md:px-9 flex items-center justify-between sticky top-0 z-30">
 
           <div className="flex items-center gap-3">
+
             <button
               onClick={() => setMobileMenu(!mobileMenu)}
               className="md:hidden p-2 text-slate-500"
@@ -208,32 +215,228 @@ function DashboardLayout() {
             </button>
 
             <div>
-              <h2 className="text-lg font-bold">{currentPage}</h2>
+              <h2 className="text-lg font-bold">
+                {currentPage}
+              </h2>
+
               <p className="text-xs text-slate-400 hidden sm:block">
                 Welcome back! Manage your billing workspace.
               </p>
             </div>
+
           </div>
+
+          {/* HEADER ACTIONS */}
 
           <div className="flex items-center gap-3">
-            <button className="hidden sm:flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-500">
-              <Search size={16} />
-              Search
-            </button>
 
-            <button className="relative p-2.5 border border-slate-200 rounded-xl text-slate-500">
-              <Bell size={19} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+            {/* SEARCH */}
 
-            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
-              AC
+            <div className="relative">
+
+              <button
+                onClick={() => {
+                  setSearchOpen(!searchOpen);
+                  setNotificationOpen(false);
+                  setProfileOpen(false);
+                }}
+                className="hidden sm:flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-500 hover:bg-slate-50 transition"
+              >
+                <Search size={16} />
+                Search
+              </button>
+
+              {searchOpen && (
+                <div className="absolute right-0 top-14 w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50">
+
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-semibold text-sm">
+                      Search Pages
+                    </h3>
+
+                    <button
+                      onClick={() => {
+                        setSearchOpen(false);
+                        setSearchQuery("");
+                      }}
+                      className="text-slate-400 hover:text-slate-700"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search customers, invoices..."
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+
+                  <p className="text-xs font-semibold text-slate-400 mt-4 mb-2">
+                    SEARCH RESULTS
+                  </p>
+
+                  <div className="max-h-52 overflow-y-auto">
+
+                    {filteredItems.length > 0 ? (
+                      filteredItems.map((item) => (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => {
+                            setSearchOpen(false);
+                            setSearchQuery("");
+                          }}
+                          className="block px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600"
+                        >
+                          {item.name}
+                        </NavLink>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-400 p-2">
+                        No matching pages found.
+                      </p>
+                    )}
+
+                  </div>
+
+                </div>
+              )}
+
             </div>
+
+            {/* NOTIFICATIONS */}
+
+            <div className="relative">
+
+              <button
+                onClick={() => {
+                  setNotificationOpen(!notificationOpen);
+                  setSearchOpen(false);
+                  setProfileOpen(false);
+                }}
+                className="relative p-2.5 border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition"
+                aria-label="Notifications"
+              >
+                <Bell size={19} />
+
+                {!notificationsRead && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+                )}
+
+              </button>
+
+              {notificationOpen && (
+                <div className="absolute right-0 top-14 w-80 max-w-[85vw] bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50">
+
+                  <div className="flex justify-between items-center mb-4">
+
+                    <h3 className="font-bold text-slate-800">
+                      Notifications
+                    </h3>
+
+                    <button
+                      onClick={() => setNotificationsRead(true)}
+                      className="text-xs text-indigo-600 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+
+                  </div>
+
+                  <div className="space-y-3">
+
+                    <div className={`p-3 rounded-lg ${notificationsRead ? "bg-white" : "bg-indigo-50"}`}>
+                      <p className="text-sm font-semibold text-slate-700">
+                        Welcome to LedgerGuard
+                      </p>
+
+                      <p className="text-xs text-slate-500 mt-1">
+                        Your billing dashboard is ready.
+                      </p>
+                    </div>
+
+                    <div className={`p-3 rounded-lg ${notificationsRead ? "bg-white" : "bg-indigo-50"}`}>
+                      <p className="text-sm font-semibold text-slate-700">
+                        Security verification
+                      </p>
+
+                      <p className="text-xs text-slate-500 mt-1">
+                        Backend security verification is pending.
+                      </p>
+                    </div>
+
+                  </div>
+
+                </div>
+              )}
+
+            </div>
+
+            {/* PROFILE */}
+
+            <div className="relative">
+
+              <button
+                onClick={() => {
+                  setProfileOpen(!profileOpen);
+                  setSearchOpen(false);
+                  setNotificationOpen(false);
+                }}
+                className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm hover:bg-indigo-200 transition"
+                aria-label="User profile"
+              >
+                AC
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 top-14 w-56 bg-white border border-slate-200 rounded-xl shadow-xl p-3 z-50">
+
+                  <div className="px-3 py-2 border-b border-slate-100 mb-2">
+
+                    <p className="font-semibold text-sm text-slate-800">
+                      Admin User
+                    </p>
+
+                    <p className="text-xs text-slate-400">
+                      admin@acme.com
+                    </p>
+
+                  </div>
+
+                  <NavLink
+                    to="/dashboard/settings"
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-indigo-50 hover:text-indigo-600"
+                  >
+                    <Settings size={16} className="inline mr-2" />
+                    Settings
+                  </NavLink>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut size={16} className="inline mr-2" />
+                    Logout
+                  </button>
+
+                </div>
+              )}
+
+            </div>
+
           </div>
+
         </header>
+
+        {/* MOBILE NAVIGATION */}
 
         {mobileMenu && (
           <div className="md:hidden bg-white border-b border-slate-200 p-5">
+
             <p className="text-xs font-semibold text-slate-400 uppercase mb-3">
               Workspace
             </p>
@@ -245,20 +448,90 @@ function DashboardLayout() {
             </p>
 
             {renderNavigation(managementItems)}
+
           </div>
         )}
+
+        {/* PAGE CONTENT */}
 
         <Outlet />
 
       </main>
+
     </div>
   );
 }
 
 
+
 function Overview() {
   const [period, setPeriod] = useState("7");
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
+
+  type DashboardInvoice = {
+    id: string;
+    customer: string;
+    date: string;
+    amount: string;
+    status: string;
+  };
+
+  const [recentInvoices, setRecentInvoices] = useState<DashboardInvoice[]>([]);
+
+  // Load invoices from shared localStorage
+  useEffect(() => {
+    const loadInvoices = () => {
+      try {
+        const saved = localStorage.getItem("ledgerguard_invoices");
+
+        if (!saved) {
+          setRecentInvoices([]);
+          return;
+        }
+
+        const invoices = JSON.parse(saved);
+
+        if (!Array.isArray(invoices)) {
+          setRecentInvoices([]);
+          return;
+        }
+
+        const formatted = [...invoices]
+          .sort(
+            (a: any, b: any) =>
+              new Date(b.issueDate).getTime() -
+              new Date(a.issueDate).getTime()
+          )
+          .slice(0, 4)
+          .map((invoice: any) => ({
+            id: invoice.invoiceNo,
+            customer: invoice.customer,
+            date: new Date(invoice.issueDate).toLocaleDateString("en-IN"),
+            amount: `₹${Number(invoice.amount).toLocaleString("en-IN")}`,
+            status: invoice.status,
+          }));
+
+        setRecentInvoices(formatted);
+      } catch (error) {
+        console.error("Dashboard invoice error:", error);
+        setRecentInvoices([]);
+      }
+    };
+
+    loadInvoices();
+
+    window.addEventListener(
+      "ledgerguard-invoices-updated",
+      loadInvoices
+    );
+
+    return () => {
+      window.removeEventListener(
+        "ledgerguard-invoices-updated",
+        loadInvoices
+      );
+    };
+  }, []);
 
   const stats = [
     {
@@ -284,7 +557,9 @@ function Overview() {
     },
     {
       title: "Pending Invoices",
-      value: "24",
+      value: String(
+        recentInvoices.filter((invoice) => invoice.status === "Pending").length
+      ),
       change: "-2.1%",
       icon: Receipt,
       path: "/dashboard/invoices",
@@ -316,9 +591,18 @@ function Overview() {
   ];
 
   const overdueData = [
-    { name: "Overdue", value: 12 },
-    { name: "Paid", value: 65 },
-    { name: "Pending", value: 23 },
+    {
+      name: "Overdue",
+      value: recentInvoices.filter((invoice) => invoice.status === "Overdue").length,
+    },
+    {
+      name: "Paid",
+      value: recentInvoices.filter((invoice) => invoice.status === "Paid").length,
+    },
+    {
+      name: "Pending",
+      value: recentInvoices.filter((invoice) => invoice.status === "Pending").length,
+    },
   ];
 
   const pieColors = ["#EF4444", "#10B981", "#F59E0B"];
@@ -326,6 +610,7 @@ function Overview() {
   return (
     <div className="p-5 md:p-9 max-w-[1500px] mx-auto">
 
+      {/* Dashboard Header */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-bold">Dashboard</h2>
@@ -426,7 +711,7 @@ function Overview() {
         </div>
       </div>
 
-      {/* Subscription and Overdue Charts */}
+      {/* Subscription and Invoice Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mt-7">
 
         {/* Active Subscriptions */}
@@ -455,7 +740,7 @@ function Overview() {
           </div>
         </div>
 
-        {/* Overdue Invoices */}
+        {/* Invoice Overview */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <h3 className="font-bold text-lg">Invoice Overview</h3>
           <p className="text-xs text-slate-400 mt-1">
@@ -473,8 +758,8 @@ function Overview() {
                   cy="50%"
                   outerRadius={95}
                   label={({ name, percent }) =>
-                   `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                     }
+                    `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                  }
                 >
                   {overdueData.map((entry, index) => (
                     <Cell
@@ -549,53 +834,82 @@ function Overview() {
             </thead>
 
             <tbody>
-              {recentInvoices.map((invoice) => (
-                <tr key={invoice.id} className="border-b border-slate-50 text-sm">
-                  <td className="py-4 font-semibold text-indigo-600">
-                    {invoice.id}
-                  </td>
-                  <td className="py-4 font-medium">{invoice.customer}</td>
-                  <td className="py-4 text-slate-500">{invoice.date}</td>
-                  <td className="py-4 font-semibold">{invoice.amount}</td>
-                  <td className="py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      invoice.status === "Paid"
-                        ? "bg-emerald-50 text-emerald-600"
-                        : invoice.status === "Pending"
-                        ? "bg-amber-50 text-amber-600"
-                        : "bg-red-50 text-red-600"
-                    }`}>
-                      {invoice.status}
-                    </span>
-                  </td>
-                  <td className="py-4">
-                    <button
-                      onClick={() =>
-                        setSelectedInvoice(
-                          selectedInvoice === invoice.id ? null : invoice.id
-                        )
-                      }
-                      className="text-slate-400 hover:text-indigo-600"
-                      title="Invoice details"
-                    >
-                      <MoreHorizontal size={19} />
-                    </button>
+              {recentInvoices.length > 0 ? (
+                recentInvoices.map((invoice) => (
+                  <tr
+                    key={invoice.id}
+                    className="border-b border-slate-50 text-sm"
+                  >
+                    <td className="py-4 font-semibold text-indigo-600">
+                      {invoice.id}
+                    </td>
 
-                    {selectedInvoice === invoice.id && (
+                    <td className="py-4 font-medium">
+                      {invoice.customer}
+                    </td>
+
+                    <td className="py-4 text-slate-500">
+                      {invoice.date}
+                    </td>
+
+                    <td className="py-4 font-semibold">
+                      {invoice.amount}
+                    </td>
+
+                    <td className="py-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          invoice.status === "Paid"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : invoice.status === "Pending"
+                            ? "bg-amber-50 text-amber-600"
+                            : "bg-red-50 text-red-600"
+                        }`}
+                      >
+                        {invoice.status}
+                      </span>
+                    </td>
+
+                    <td className="py-4">
                       <button
                         onClick={() =>
-                          window.alert(
-                            `Invoice: ${invoice.id}\nCustomer: ${invoice.customer}\nAmount: ${invoice.amount}\nStatus: ${invoice.status}`
+                          setSelectedInvoice(
+                            selectedInvoice === invoice.id
+                              ? null
+                              : invoice.id
                           )
                         }
-                        className="ml-2 text-indigo-600 text-xs font-semibold"
+                        className="text-slate-400 hover:text-indigo-600"
+                        title="Invoice details"
                       >
-                        Details
+                        <MoreHorizontal size={19} />
                       </button>
-                    )}
+
+                      {selectedInvoice === invoice.id && (
+                        <button
+                          onClick={() =>
+                            window.alert(
+                              `Invoice: ${invoice.id}\nCustomer: ${invoice.customer}\nAmount: ${invoice.amount}\nStatus: ${invoice.status}`
+                            )
+                          }
+                          className="ml-2 text-indigo-600 text-xs font-semibold"
+                        >
+                          Details
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-8 text-center text-slate-400"
+                  >
+                    No invoices found. Create your first invoice.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -603,6 +917,7 @@ function Overview() {
     </div>
   );
 }
+
 
 
 function Customers() {
@@ -1757,55 +2072,82 @@ function Invoices() {
     status: "Paid" | "Pending";
   };
 
-  const customers = ["Acme Corporation", "Tech Solutions", "Global Services", "Digital Agency"];
-const [invoices, setInvoices] = useState<Invoice[]>(() => {
-  try {
-    const savedInvoices = localStorage.getItem("ledgerguard_invoices");
-
-    if (savedInvoices) {
-      return JSON.parse(savedInvoices) as Invoice[];
-    }
-  } catch (error) {
-    console.error("Error loading invoices:", error);
-  }
-
-  return [
-    {
-      id: 1,
-      invoiceNo: "INV-1001",
-      customer: "Acme Corporation",
-      amount: 25000,
-      issueDate: "2026-11-01",
-      dueDate: "2026-11-15",
-      status: "Paid",
-    },
-    {
-      id: 2,
-      invoiceNo: "INV-1002",
-      customer: "Tech Solutions",
-      amount: 18000,
-      issueDate: "2026-11-02",
-      dueDate: "2026-11-10",
-      status: "Pending",
-    },
+  const defaultCustomers = [
+    "Acme Corporation",
+    "Tech Solutions",
+    "Global Services",
+    "Digital Agency",
   ];
-});
 
-useEffect(() => {
-  localStorage.setItem(
-    "ledgerguard_invoices",
-    JSON.stringify(invoices)
-  );
-}, [invoices]);
+  const [customers, setCustomers] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("ledgerguard_invoice_customers");
+      return saved ? JSON.parse(saved) : defaultCustomers;
+    } catch {
+      return defaultCustomers;
+    }
+  });
+
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    try {
+      const saved = localStorage.getItem("ledgerguard_invoices");
+      if (saved) return JSON.parse(saved) as Invoice[];
+    } catch (error) {
+      console.error("Error loading invoices:", error);
+    }
+
+    return [
+      {
+        id: 1,
+        invoiceNo: "INV-1001",
+        customer: "Acme Corporation",
+        amount: 25000,
+        issueDate: "2026-11-01",
+        dueDate: "2026-11-15",
+        status: "Paid",
+      },
+      {
+        id: 2,
+        invoiceNo: "INV-1002",
+        customer: "Tech Solutions",
+        amount: 18000,
+        issueDate: "2026-11-02",
+        dueDate: "2026-11-10",
+        status: "Pending",
+      },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "ledgerguard_invoices",
+      JSON.stringify(invoices)
+    );
+
+    window.dispatchEvent(
+      new Event("ledgerguard-invoices-updated")
+    );
+  }, [invoices]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "ledgerguard_invoice_customers",
+      JSON.stringify(customers)
+    );
+  }, [customers]);
 
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const [customer, setCustomer] = useState(customers[0]);
+  const [customer, setCustomer] = useState("");
   const [amount, setAmount] = useState("");
-  const [issueDate, setIssueDate] = useState(() => getDefaultInvoiceDates().issueDate);
-  const [dueDate, setDueDate] = useState(() => getDefaultInvoiceDates().dueDate);
+  const [issueDate, setIssueDate] = useState(
+    () => getDefaultInvoiceDates().issueDate
+  );
+  const [dueDate, setDueDate] = useState(
+    () => getDefaultInvoiceDates().dueDate
+  );
   const [status, setStatus] = useState<"Paid" | "Pending">("Pending");
 
   const getInvoiceStatus = (invoice: Invoice) => {
@@ -1820,7 +2162,7 @@ useEffect(() => {
   };
 
   const resetForm = () => {
-    setCustomer(customers[0]);
+    setCustomer("");
     setAmount("");
     setIssueDate(getDefaultInvoiceDates().issueDate);
     setDueDate(getDefaultInvoiceDates().dueDate);
@@ -1832,7 +2174,14 @@ useEffect(() => {
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!customer || Number(amount) <= 0 || !dueDate || !issueDate) {
+    const companyName = customer.trim();
+
+    if (
+      !companyName ||
+      Number(amount) <= 0 ||
+      !dueDate ||
+      !issueDate
+    ) {
       alert("Please enter valid invoice details.");
       return;
     }
@@ -1842,13 +2191,21 @@ useEffect(() => {
       return;
     }
 
+    const existingCustomer = customers.some(
+      (name) => name.toLowerCase() === companyName.toLowerCase()
+    );
+
+    if (!existingCustomer) {
+      setCustomers((previous) => [...previous, companyName]);
+    }
+
     if (editingId !== null) {
       setInvoices((previous) =>
         previous.map((invoice) =>
           invoice.id === editingId
             ? {
                 ...invoice,
-                customer,
+                customer: companyName,
                 amount: Number(amount),
                 issueDate,
                 dueDate,
@@ -1859,12 +2216,17 @@ useEffect(() => {
       );
     } else {
       const nextNumber =
-        Math.max(1000, ...invoices.map((invoice) => Number(invoice.invoiceNo.replace("INV-", "")))) + 1;
+        Math.max(
+          1000,
+          ...invoices.map((invoice) =>
+            Number(invoice.invoiceNo.replace("INV-", ""))
+          )
+        ) + 1;
 
       const newInvoice: Invoice = {
         id: Date.now(),
         invoiceNo: `INV-${nextNumber}`,
-        customer,
+        customer: companyName,
         amount: Number(amount),
         issueDate,
         dueDate,
@@ -1887,27 +2249,30 @@ useEffect(() => {
     setShowForm(true);
   };
 
- const handleDelete = (id: number) => {
-  if (window.confirm("Are you sure you want to delete this invoice?")) {
-    setInvoices((previous) => previous.filter((invoice) => invoice.id !== id));
-  }
-};
+  const handleDelete = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this invoice?")) {
+      setInvoices((previous) =>
+        previous.filter((invoice) => invoice.id !== id)
+      );
+    }
+  };
 
-const handleToggleStatus = (id: number) => {
-  setInvoices((previous) =>
-    previous.map((invoice) =>
-      invoice.id === id
-        ? {
-            ...invoice,
-            status: invoice.status === "Paid" ? "Pending" : "Paid",
-          }
-        : invoice
-    )
-  );
-};
+  const handleToggleStatus = (id: number) => {
+    setInvoices((previous) =>
+      previous.map((invoice) =>
+        invoice.id === id
+          ? {
+              ...invoice,
+              status: invoice.status === "Paid" ? "Pending" : "Paid",
+            }
+          : invoice
+      )
+    );
+  };
 
-const handlePrint = (invoice: Invoice) => {
-  const printWindow = window.open("", "_blank");
+  const handlePrint = (invoice: Invoice) => {
+    const printWindow = window.open("", "_blank");
+
     if (!printWindow) {
       alert("Please allow pop-ups to print the invoice.");
       return;
@@ -1973,13 +2338,19 @@ const handlePrint = (invoice: Invoice) => {
       invoice.customer.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalAmount = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
+  const totalAmount = invoices.reduce(
+    (sum, invoice) => sum + invoice.amount,
+    0
+  );
+
   const paidAmount = invoices
     .filter((invoice) => invoice.status === "Paid")
     .reduce((sum, invoice) => sum + invoice.amount, 0);
+
   const pendingCount = invoices.filter(
     (invoice) => getInvoiceStatus(invoice) === "Pending"
   ).length;
+
   const overdueCount = invoices.filter(
     (invoice) => getInvoiceStatus(invoice) === "Overdue"
   ).length;
@@ -1996,12 +2367,7 @@ const handlePrint = (invoice: Invoice) => {
 
         <button
           onClick={() => {
-            setEditingId(null);
-            setCustomer(customers[0]);
-            setAmount("");
-            setIssueDate(getDefaultInvoiceDates().issueDate);
-            setDueDate(getDefaultInvoiceDates().dueDate);
-            setStatus("Pending");
+            resetForm();
             setShowForm(true);
           }}
           className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
@@ -2094,25 +2460,26 @@ const handlePrint = (invoice: Invoice) => {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <button
-  onClick={() => handleEdit(invoice)}
-  className="font-medium text-indigo-600 hover:text-indigo-800"
->
-  Edit
-</button>
+                          onClick={() => handleEdit(invoice)}
+                          className="font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                          Edit
+                        </button>
 
-<button
-  onClick={() => handleToggleStatus(invoice.id)}
-  className="font-medium text-amber-600 hover:text-amber-800"
->
-  {invoice.status === "Paid" ? "Mark Pending" : "Mark Paid"}
-</button>
+                        <button
+                          onClick={() => handleToggleStatus(invoice.id)}
+                          className="font-medium text-amber-600 hover:text-amber-800"
+                        >
+                          {invoice.status === "Paid" ? "Mark Pending" : "Mark Paid"}
+                        </button>
 
-<button
-  onClick={() => handlePrint(invoice)}
-  className="font-medium text-emerald-600 hover:text-emerald-800"
->
-  Print
-</button>
+                        <button
+                          onClick={() => handlePrint(invoice)}
+                          className="font-medium text-emerald-600 hover:text-emerald-800"
+                        >
+                          Print
+                        </button>
+
                         <button
                           onClick={() => handleDelete(invoice.id)}
                           className="font-medium text-red-500 hover:text-red-700"
@@ -2144,6 +2511,7 @@ const handlePrint = (invoice: Invoice) => {
               <h2 className="text-xl font-bold text-slate-900">
                 {editingId !== null ? "Edit Invoice" : "Create Invoice"}
               </h2>
+
               <button
                 onClick={resetForm}
                 className="text-2xl text-slate-400 hover:text-slate-700"
@@ -2155,23 +2523,36 @@ const handlePrint = (invoice: Invoice) => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Customer
+                  Customer / Company Name
                 </label>
-                <select
+
+                <input
+                  type="text"
+                  list="invoice-company-suggestions"
                   value={customer}
                   onChange={(e) => setCustomer(e.target.value)}
+                  placeholder="Type any company name..."
+                  autoComplete="off"
+                  required
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-500"
-                >
+                />
+
+                <datalist id="invoice-company-suggestions">
                   {customers.map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                    <option key={name} value={name} />
                   ))}
-                </select>
+                </datalist>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Select an existing company or type a new company name.
+                </p>
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Invoice Amount (₹)
                 </label>
+
                 <input
                   type="number"
                   min="1"
@@ -2188,6 +2569,7 @@ const handlePrint = (invoice: Invoice) => {
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Issue Date
                   </label>
+
                   <input
                     type="date"
                     value={issueDate}
@@ -2201,6 +2583,7 @@ const handlePrint = (invoice: Invoice) => {
                   <label className="mb-1 block text-sm font-medium text-slate-700">
                     Due Date
                   </label>
+
                   <input
                     type="date"
                     value={dueDate}
@@ -2216,9 +2599,12 @@ const handlePrint = (invoice: Invoice) => {
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Payment Status
                 </label>
+
                 <select
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as "Paid" | "Pending")}
+                  onChange={(e) =>
+                    setStatus(e.target.value as "Paid" | "Pending")
+                  }
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-500"
                 >
                   <option value="Pending">Pending</option>
@@ -2234,6 +2620,7 @@ const handlePrint = (invoice: Invoice) => {
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
@@ -2248,6 +2635,7 @@ const handlePrint = (invoice: Invoice) => {
     </div>
   );
 }
+
 
 
 function Security() {
@@ -3733,6 +4121,7 @@ function App() {
           <Route path="payments" element={<Payments />} />
           <Route path="security" element={<Security />} />
           <Route path="team" element={<Team />} />
+          <Route path="api-keys" element={<ApiKeys />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
